@@ -2,7 +2,6 @@ package org.example.demoapi.services
 
 import org.example.demoapi.data.DataRepository
 import org.example.demoapi.model.Item
-import org.example.demoapi.model.patches.ItemPatch
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 
@@ -24,8 +23,20 @@ class ItemsController {
             @RequestParam(required = false) date: String? = null
     ) = DataRepository.observeItems(name)
 
+    @PatchMapping("")
+    fun patch(@RequestBody patches: Map<Long, Item.Patch?>) = patches.mapValues {
+        val patch = it.value
+        if (patch != null) this.patch(it.key, patch)
+        else this.delete(it.key).let { null }
+    }
+
     @PostMapping("")
     fun create(@RequestBody item: Item) = DataRepository.createItem(item)
+
+    @PostMapping("")
+    fun create(@RequestBody items: List<Item>) = items.map {
+        DataRepository.createItem(it)
+    }
 
     // Item routes
 
@@ -36,7 +47,7 @@ class ItemsController {
     fun observe(@PathVariable id: Long) = DataRepository.observeItem(id)
 
     @PatchMapping("/{id}")
-    fun patch(@PathVariable id: Long, @RequestBody patch: ItemPatch) = DataRepository.updateItem(id, patch)
+    fun patch(@PathVariable id: Long, @RequestBody patch: Item.Patch) = DataRepository.updateItem(id, patch)
 
     @PutMapping("/{id}")
     fun put(@PathVariable id: Long, @RequestBody item: Item): Item {

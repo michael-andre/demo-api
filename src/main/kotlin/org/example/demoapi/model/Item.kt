@@ -6,4 +6,11 @@ data class Item(
         val id: Long,
         val name: String,
         val date: LocalDate
-)
+) {
+
+    data class Patch(
+        val name: String?,
+        val date: LocalDate?
+    )
+
+}

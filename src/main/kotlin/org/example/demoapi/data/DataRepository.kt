@@ -1,16 +1,20 @@
 package org.example.demoapi.data
 
 import org.example.demoapi.model.Item
-import org.example.demoapi.model.patches.ItemPatch
 import reactor.core.publisher.EmitterProcessor
 import reactor.core.publisher.Flux
 import java.time.LocalDate
 import java.time.Month
+import kotlin.random.Random
 
 object DataRepository {
 
     private val items = (1..1000).map {
-        Item(it.toLong(), "Item $it", LocalDate.of(2000, Month.JANUARY, 1).plusDays(it.toLong()))
+        Item(
+                id = it.toLong(),
+                name = "Item $it",
+                date = LocalDate.of(2000, Month.JANUARY, 1).plusDays(Random.nextLong(10000))
+        )
     }.toMutableList()
 
     fun getItems(
@@ -47,7 +51,7 @@ object DataRepository {
         itemUpdates.onNext(Update(item.id, item))
     }
 
-    fun updateItem(id: Long, patch: ItemPatch) = updateItem(getItem(id).run {
+    fun updateItem(id: Long, patch: Item.Patch) = updateItem(getItem(id).run {
         copy(
                 name = patch.name ?: name,
                 date = patch.date ?: date
