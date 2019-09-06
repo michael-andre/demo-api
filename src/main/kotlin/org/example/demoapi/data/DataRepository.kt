@@ -1,8 +1,12 @@
 package org.example.demoapi.data
 
 import org.example.demoapi.model.Item
+import org.example.demoapi.utils.Range
+import org.example.demoapi.utils.filters.ComparableConstraint
+import org.example.demoapi.utils.ranged
 import reactor.core.publisher.EmitterProcessor
-import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.Month
 import kotlin.random.Random
@@ -13,31 +17,38 @@ object DataRepository {
         Item(
                 id = it.toLong(),
                 name = "Item $it",
+                active = true,
+                value = Random.nextFloat().takeIf { it > 0.2f }?.toBigDecimal(),
                 date = LocalDate.of(2000, Month.JANUARY, 1).plusDays(Random.nextLong(10000))
         )
     }.toMutableList()
 
     fun getItems(
-            name: String? = null,
-            date: ClosedRange<LocalDate>? = null
-    ) = items.filter {
-        (name == null || it.name.contains(name, true))
-                && (date == null || date.contains(it.date))
-    }
+            name: Set<String>? = null,
+            date: Set<ComparableConstraint<LocalDate>>? = null,
+            value: Set<ComparableConstraint<BigDecimal>>? = null,
+            active: Set<Boolean>? = null,
+            range: Range? = null
+    ) = items.filter { item ->
+        (name == null || name.any { item.name.contains(it, true) })
+                && item.date.matches(date)
+                && item.value.matches(value)
+                && item.value.matches(active)
+    }.ranged(range)
 
     fun observeItems(
-            name: String? = null,
-            date: ClosedRange<LocalDate>? = null
-    ) = trigger()
-            .map { getItems(name, date) }
-            .distinctUntilChanged()
+            name: Set<String>? = null,
+            date: Set<ComparableConstraint<LocalDate>>? = null,
+            value: Set<ComparableConstraint<BigDecimal>>? = null,
+            active: Set<Boolean>? = null,
+            range: Range? = null
+    ) = Mono.fromCallable { getItems(name, date, value, active, range) }
+            .withUpdates()
 
     fun getItem(id: Long) = items.single { it.id == id }
 
-    fun observeItem(id: Long) =
-            trigger { it.id == id }
-                    .map { it.value ?: getItem(id) }
-                    .distinctUntilChanged()
+    fun observeItem(id: Long) = Mono.fromCallable { getItem(id) }
+            .withUpdates { it.id == id }
 
     private fun getNextId() = (items.map { it.id }.max() ?: 0) + 1L
 
@@ -54,6 +65,8 @@ object DataRepository {
     fun updateItem(id: Long, patch: Item.Patch) = updateItem(getItem(id).run {
         copy(
                 name = patch.name ?: name,
+                active = patch.active ?: active,
+                value = patch.value?.orElse(null) ?: value,
                 date = patch.date ?: date
         )
     })
@@ -70,8 +83,30 @@ object DataRepository {
             val value: Item? = null
     )
 
-    private fun trigger(updateFilter: (Update) -> Boolean = { true }) =
-            Flux.just(Update())
-                    .concatWith(itemUpdates.filter(updateFilter))
+    private fun <T> Mono<T>.withUpdates(updateFilter: (Update) -> Boolean = { true }) = this
+            .repeatWhen { it.switchMap { itemUpdates.filter(updateFilter) } }
+            .distinctUntilChanged()
+
+    private fun <T : Comparable<T>> T?.matches(constraints: Collection<ComparableConstraint<T>>?) = when {
+        constraints == null -> true
+        constraints.isEmpty() -> this != null
+        else -> constraints.any {
+            when (it) {
+                is ComparableConstraint.Value -> when (it.value) {
+                    null -> this == null
+                    else -> this?.compareTo(it.value) == 0
+                }
+                is ComparableConstraint.Bounds -> this != null
+                        && (if (it.min != null) (this >= it.min) else true)
+                        && (if (it.max != null) (this <= it.max) else true)
+            }
+        }
+    }
+
+    private fun <T> T?.matches(constraints: Collection<T?>?) = when {
+        constraints == null -> true
+        constraints.isEmpty() -> this != null
+        else -> constraints.contains(this)
+    }
 
 }
