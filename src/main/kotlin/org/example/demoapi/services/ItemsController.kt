@@ -35,9 +35,10 @@ class ItemsController {
 
     @PatchMapping("")
     fun patch(@RequestBody patches: Map<Long, Item.Patch?>) = patches.mapValues {
-        val patch = it.value
-        if (patch != null) this.patch(it.key, patch)
-        else this.delete(it.key).let { null }
+        when (val patch = it.value) {
+            null -> this.delete(it.key).let { null }
+            else -> this.patch(it.key, patch)
+        }
     }
 
     @PostMapping("")

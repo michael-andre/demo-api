@@ -3,6 +3,7 @@ package org.example.demoapi.data
 import org.example.demoapi.model.Item
 import org.example.demoapi.utils.Range
 import org.example.demoapi.utils.filters.ComparableConstraint
+import org.example.demoapi.utils.filters.matches
 import org.example.demoapi.utils.ranged
 import reactor.core.publisher.EmitterProcessor
 import reactor.core.publisher.Mono
@@ -87,26 +88,6 @@ object DataRepository {
             .repeatWhen { it.switchMap { itemUpdates.filter(updateFilter) } }
             .distinctUntilChanged()
 
-    private fun <T : Comparable<T>> T?.matches(constraints: Collection<ComparableConstraint<T>>?) = when {
-        constraints == null -> true
-        constraints.isEmpty() -> this != null
-        else -> constraints.any {
-            when (it) {
-                is ComparableConstraint.Value -> when (it.value) {
-                    null -> this == null
-                    else -> this?.compareTo(it.value) == 0
-                }
-                is ComparableConstraint.Bounds -> this != null
-                        && (if (it.min != null) (this >= it.min) else true)
-                        && (if (it.max != null) (this <= it.max) else true)
-            }
-        }
-    }
 
-    private fun <T> T?.matches(constraints: Collection<T?>?) = when {
-        constraints == null -> true
-        constraints.isEmpty() -> this != null
-        else -> constraints.contains(this)
-    }
 
 }
