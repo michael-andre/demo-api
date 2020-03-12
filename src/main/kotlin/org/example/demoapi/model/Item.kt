@@ -19,4 +19,10 @@ data class Item(
         val date: LocalDate?
     )
 
+    enum class Sort {
+        NAME,
+        VALUE,
+        DATE
+    }
+
 }

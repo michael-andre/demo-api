@@ -1,13 +1,16 @@
 package org.example.demoapi.services
 
+import org.example.demoapi.api.RequestRange
 import org.example.demoapi.utils.Range
 import org.example.demoapi.data.DataRepository
 import org.example.demoapi.model.Item
+import org.example.demoapi.utils.SortSpec
 import org.example.demoapi.utils.filters.ComparableConstraint
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.util.*
 
 @RestController
 @RequestMapping("/items")
@@ -21,8 +24,9 @@ class ItemsController {
             @RequestParam(required = false) date: Set<ComparableConstraint<LocalDate>>?,
             @RequestParam(required = false) value: Set<ComparableConstraint<BigDecimal>>?,
             @RequestParam(required = false) active: Set<Boolean>?,
-            range: Range?
-    ) = DataRepository.getItems(name, date, value, active, range)
+            @RequestParam(name = "_sort", required = false) sort: List<SortSpec<Item.Sort>>?,
+            @RequestRange(defaultSize = 50, maxSize = 100) range: Range?
+    ) = DataRepository.getItems(name, date, value, active, sort, range)
 
     @GetMapping("", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun observeList(
@@ -30,8 +34,9 @@ class ItemsController {
             @RequestParam(required = false) date: Set<ComparableConstraint<LocalDate>>?,
             @RequestParam(required = false) value: Set<ComparableConstraint<BigDecimal>>?,
             @RequestParam(required = false) active: Set<Boolean>?,
-            range: Range?
-    ) = DataRepository.observeItems(name, date, value, active, range)
+            @RequestParam(name = "_sort", required = false) sort: List<SortSpec<Item.Sort>>?,
+            @RequestRange(defaultSize = 50, maxSize = 100) range: Range?
+    ) = DataRepository.observeItems(name, date, value, active, sort, range)
 
     @PatchMapping("")
     fun patch(@RequestBody patches: Map<Long, Item.Patch?>) = patches.mapValues {

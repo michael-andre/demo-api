@@ -1,13 +1,14 @@
 package org.example.demoapi.utils
 
-data class Range(
-    val start: Int?,
+sealed class Range
+data class OffsetRange(
+    val start: Int,
     val end: Int?
-) {
+) : Range() {
 
     init {
-        assert(start != null || end != null)
-        if (start != null && end != null) assert(start <= end)
+        if (end != null) assert(start <= end)
     }
 
 }
+data class EndOffsetRange(val count: Int) : Range()
